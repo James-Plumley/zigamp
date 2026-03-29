@@ -1,6 +1,6 @@
 # ZigAmp
 
-`ZigAmp` is a Windows-first audio player scaffold written in Zig with:
+`ZigAmp` is a a basic music player written in Zig, using OpenGL for UI. I develop on Windows, but using this application on Linux should be feasible after I make it agnostic to winmm.
 
 - an OpenGL 1.1 playlist UI
 - Zig-side metadata parsing for common audio formats
@@ -8,9 +8,9 @@
 - XSPF playlist import/export
 - OS-backed playback via Windows MCI (`winmm`)
 
-## Current Scope
+## Scope
 
-This is a practical "basic VLC clone" for audio workflows, not a full VLC replacement.
+This is a beginner's Zig and OpenGL project for the sake of learning.
 
 - UI and application logic are written in Zig.
 - Rendering is done directly with OpenGL.
