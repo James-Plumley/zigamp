@@ -1,0 +1,7 @@
+/.zig-cache/
+/.zig-global-cache/
+/zig-out/
+/zig-out-fixed/
+/zig-x86_64-windows-*/
+/Zig notes.md
+/gcm-diagnose.log
