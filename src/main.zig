@@ -211,13 +211,12 @@ const Window = struct {
         self.drawText(20, 26, "ZigAmp", Color.rgb(0.95, 0.97, 0.99));
         self.drawText(120, 26, "OpenGL playlist view, Zig metadata parsing, XSPF import/export.", Color.rgb(0.72, 0.76, 0.80));
 
-        if (self.button(20, 82, 120, 28, "Import Audio")) self.importAudioFiles();
-        if (self.button(150, 82, 110, 28, "Open XSPF")) self.openXspf();
-        if (self.button(270, 82, 110, 28, "Save XSPF")) self.saveXspf();
-        if (self.button(420, 82, 70, 28, "Prev")) self.app.previous(self.hwnd) catch |err| self.app.setMessageFmt("Previous failed: {s}", .{@errorName(err)});
-        if (self.button(500, 82, 90, 28, "Play/Pause")) self.app.togglePause(self.hwnd) catch |err| self.app.setMessageFmt("Playback failed: {s}", .{@errorName(err)});
-        if (self.button(600, 82, 70, 28, "Stop")) self.app.stopPlayback() catch |err| self.app.setMessageFmt("Stop failed: {s}", .{@errorName(err)});
-        if (self.button(680, 82, 70, 28, "Next")) self.app.next(self.hwnd) catch |err| self.app.setMessageFmt("Next failed: {s}", .{@errorName(err)});
+        if (self.button(20, 82, 90, 28, "Open")) self.openFiles();
+        if (self.button(120, 82, 110, 28, "Save XSPF")) self.saveXspf();
+        if (self.button(270, 82, 70, 28, "Prev")) self.app.previous(self.hwnd) catch |err| self.app.setMessageFmt("Previous failed: {s}", .{@errorName(err)});
+        if (self.button(350, 82, 90, 28, "Play/Pause")) self.app.togglePause(self.hwnd) catch |err| self.app.setMessageFmt("Playback failed: {s}", .{@errorName(err)});
+        if (self.button(450, 82, 70, 28, "Stop")) self.app.stopPlayback() catch |err| self.app.setMessageFmt("Stop failed: {s}", .{@errorName(err)});
+        if (self.button(530, 82, 70, 28, "Next")) self.app.next(self.hwnd) catch |err| self.app.setMessageFmt("Next failed: {s}", .{@errorName(err)});
     }
 
     fn drawTrackTable(self: *Window) void {
@@ -352,9 +351,35 @@ const Window = struct {
         return false;
     }
 
-    fn importAudioFiles(self: *Window) void {
-        const filter = platform.buildDialogFilter(self.allocator, "Audio Files\x00*.mp3;*.wav;*.flac;*.ogg;*.opus;*.m4a;*.aac;*.wma\x00All Files\x00*.*\x00\x00") catch {
-            self.app.setMessage("Failed to build dialog filter.");
+    fn openPaths(self: *Window, paths: [][]u8) void {
+        var xspf_count: usize = 0;
+        var xspf_index: usize = 0;
+        for (paths, 0..) |path, index| {
+            if (std.ascii.eqlIgnoreCase(std.fs.path.extension(path), ".xspf")) {
+                if (xspf_count == 0) xspf_index = index;
+                xspf_count += 1;
+            }
+        }
+
+        if (xspf_count == 0) {
+            self.app.importFilePaths(paths) catch |err| self.app.setMessageFmt("Import failed: {s}", .{@errorName(err)});
+            return;
+        }
+
+        if (paths.len == 1 and xspf_count == 1) {
+            self.app.importXspf(paths[xspf_index]) catch |err| self.app.setMessageFmt("XSPF import failed: {s}", .{@errorName(err)});
+            return;
+        }
+
+        self.app.setMessage("Open accepts either audio files or one XSPF playlist.");
+    }
+
+    fn openFiles(self: *Window) void {
+        const filter = platform.buildDialogFilter(
+            self.allocator,
+            "Openable Media\x00*.mp3;*.wav;*.flac;*.ogg;*.opus;*.m4a;*.aac;*.wma;*.xspf\x00Audio Files\x00*.mp3;*.wav;*.flac;*.ogg;*.opus;*.m4a;*.aac;*.wma\x00XSPF Playlist\x00*.xspf\x00All Files\x00*.*\x00\x00",
+        ) catch {
+            self.app.setMessage("Failed to build open filter.");
             return;
         };
         defer self.allocator.free(filter);
@@ -376,34 +401,7 @@ const Window = struct {
         };
         defer platform.freeStringList(self.allocator, paths);
 
-        self.app.importFilePaths(paths) catch |err| self.app.setMessageFmt("Import failed: {s}", .{@errorName(err)});
-    }
-
-    fn openXspf(self: *Window) void {
-        const filter = platform.buildDialogFilter(self.allocator, "XSPF Playlist\x00*.xspf\x00All Files\x00*.*\x00\x00") catch {
-            self.app.setMessage("Failed to build playlist filter.");
-            return;
-        };
-        defer self.allocator.free(filter);
-
-        var buffer: [4096]u16 = [_]u16{0} ** 4096;
-        var ofn: c.OPENFILENAMEW = std.mem.zeroes(c.OPENFILENAMEW);
-        ofn.lStructSize = @sizeOf(c.OPENFILENAMEW);
-        ofn.hwndOwner = self.hwnd;
-        ofn.lpstrFilter = filter.ptr;
-        ofn.lpstrFile = buffer[0..].ptr;
-        ofn.nMaxFile = @as(c.DWORD, @intCast(buffer.len));
-        ofn.Flags = c.OFN_EXPLORER | c.OFN_FILEMUSTEXIST | c.OFN_PATHMUSTEXIST;
-
-        if (c.GetOpenFileNameW(&ofn) == 0) return;
-
-        const path = platform.utf16ToUtf8Alloc(self.allocator, std.mem.sliceTo(buffer[0..], 0)) catch {
-            self.app.setMessage("Failed to decode playlist path.");
-            return;
-        };
-        defer self.allocator.free(path);
-
-        self.app.importXspf(path) catch |err| self.app.setMessageFmt("XSPF import failed: {s}", .{@errorName(err)});
+        self.openPaths(paths);
     }
 
     fn saveXspf(self: *Window) void {
@@ -569,11 +567,7 @@ export fn wndProc(hwnd: c.HWND, msg: c.UINT, wparam: c.WPARAM, lparam: c.LPARAM)
                     };
                 }
 
-                if (paths.items.len == 1 and std.ascii.eqlIgnoreCase(std.fs.path.extension(paths.items[0]), ".xspf")) {
-                    w.app.importXspf(paths.items[0]) catch {};
-                } else {
-                    w.app.importFilePaths(paths.items) catch {};
-                }
+                w.openPaths(paths.items);
             }
             return 0;
         },
