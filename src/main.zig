@@ -206,6 +206,8 @@ const Window = struct {
     }
 
     fn drawHeader(self: *Window) void {
+        const play_label = if (self.app.current_state == .playing) "Pause" else "Play";
+
         self.drawRect(0, 0, @floatFromInt(self.width), 74, Color.rgb(0.10, 0.11, 0.14));
         self.drawRect(0, 74, @floatFromInt(self.width), 44, Color.rgb(0.11, 0.13, 0.17));
         self.drawText(20, 26, "ZigAmp", Color.rgb(0.95, 0.97, 0.99));
@@ -214,7 +216,7 @@ const Window = struct {
         if (self.button(20, 82, 90, 28, "Open")) self.openFiles();
         if (self.button(120, 82, 110, 28, "Save XSPF")) self.saveXspf();
         if (self.button(270, 82, 70, 28, "Prev")) self.app.previous(self.hwnd) catch |err| self.app.setMessageFmt("Previous failed: {s}", .{@errorName(err)});
-        if (self.button(350, 82, 90, 28, "Play/Pause")) self.app.togglePause(self.hwnd) catch |err| self.app.setMessageFmt("Playback failed: {s}", .{@errorName(err)});
+        if (self.button(350, 82, 90, 28, play_label)) self.app.togglePause(self.hwnd) catch |err| self.app.setMessageFmt("Playback failed: {s}", .{@errorName(err)});
         if (self.button(450, 82, 70, 28, "Stop")) self.app.stopPlayback() catch |err| self.app.setMessageFmt("Stop failed: {s}", .{@errorName(err)});
         if (self.button(530, 82, 70, 28, "Next")) self.app.next(self.hwnd) catch |err| self.app.setMessageFmt("Next failed: {s}", .{@errorName(err)});
     }
